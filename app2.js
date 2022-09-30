@@ -61,7 +61,13 @@ const createFFTask = async (contentVideo) => {
   // create FFScene
   const scene1 = new FFScene();
   
-  const fvideo1 = new FFVideo({ path: videoStart, y: 0 });
+  const fvideo1 = new FFVideo({
+    path: videoStart,
+    x: videoWidth / 2,
+    y: videoHeight / 2,
+    width: videoWidth,
+    height: videoHeight
+  });
   fvideo1.setAudio(false)
   scene1.addChild(fvideo1);
   scene1.setDuration(10);
@@ -71,9 +77,13 @@ const createFFTask = async (contentVideo) => {
   const scene2 = new FFScene()
   const contentVideoInstance = new FFVideo({
     path: contentVideo,
-    y: 0
+    x: videoWidth / 2,
+    y: videoHeight / 2,
+    width: videoWidth,
+    height: videoHeight
   })
   contentVideoInstance.setAudio(true)
+  scene2.setDuration(duration)
   scene2.addChild(contentVideoInstance)
   creator.addChild(scene2)
 
@@ -108,8 +118,9 @@ const createFFTask = async (contentVideo) => {
 // });
 
 videoData.videoData.forEach(item => {
-  FFCreatorCenter.addTask(() => {
-    createFFTask(item.path)
+  FFCreatorCenter.addTask(async () => {
+    const creator = await createFFTask(item.path)
+    return creator
   })
 })
 
