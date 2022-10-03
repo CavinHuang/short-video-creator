@@ -55,6 +55,7 @@ const createFFTask = async (contentVideo, desc = '') => {
 
   // create FFScene
   const scene1 = new FFScene();
+  scene1.setBgColor('#00ff00')
   
   const fvideo1 = new FFVideo({
     path: videoStart,

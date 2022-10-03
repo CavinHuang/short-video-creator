@@ -10,11 +10,15 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "apify": "^3.0.2",
+    "axios": "^0.27.2",
     "colors": "^1.4.0",
+    "crawlee": "^3.0.4",
     "execa": "5.1.1",
     "ffcreator": "^6.7.5",
     "ffcreatorlite": "^2.3.9",
     "fluent-ffmpeg": "^2.1.2",
-    "keypress": "^0.2.1"
+    "keypress": "^0.2.1",
+    "puppeteer": "15.1"
   }
 }
