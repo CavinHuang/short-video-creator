@@ -100,7 +100,7 @@ class WxVideoAutoScript {
 
   async postVideo(page) {
     console.log('开始发布')
-    const fileUrl = path.resolve(__dirname, './start.mp4')
+    this.sleep(5000)
     const desc = "太阳出來了 \r\n没什么练习直接录 #推荐 #人人都是创作者"
     console.log("开始上传视频")
     // await page.waitForNavigation()
@@ -160,44 +160,34 @@ class WxVideoAutoScript {
 
     await page.mouse.move(x + 30, y, { steps: 10 })
     await page.mouse.down()
-    await page.mouse.move(x + 30, 182, { steps: 10 })
+    await page.mouse.move(x + 30, 280, { steps: 10 })
     await page.mouse.up()
 
     // 截取预览图
-    const { px, py } = await page.evaluate((previewSelector) => {
+    const { px, py, pwidth } = await page.evaluate((previewSelector) => {
       const previewImg = document.querySelector(previewSelector).getBoundingClientRect()
       const { x, y, width, height } = previewImg
-      return { px: x, py: y }
-    }, '.current-key-frame')
+      return { px: x, py: y, pwidth: width }
+    }, '.key-frames-bg-slider')
 
     await page.mouse.move(px + 10, py + 10, { steps: 10 })
     await page.mouse.down()
-    await page.mouse.move(80.5, py, { steps: 10 })
+    await page.mouse.move(307 + 33.5, py + 10, { steps: 10 })
     await page.mouse.up()
+
+    await this.sleep(1000)
+
+    const previewConfirmBtn = await page.waitForSelector('.cover-set-footer button.weui-desktop-btn.weui-desktop-btn_primary.weui-desktop-btn_mini')
+    await previewConfirmBtn.click()
+
+    await this.sleep(10000)
 
     await page.waitForSelector('.input-editor')
     await page.type('.input-editor', desc)
     console.log('发送描述信息')
 
-    // page.waitForResponse(req => {
-    //   console.log(req.url())
-    //   return req.url().includes('/applyuploaddfs') && req.status() === 200
-    // }).then(req => {
-    //   console.log(req, '+++++++=====')
-    // })
-    // page.on('response', request  => {
-    //   if (request.url().includes('/applyuploaddfs') && request.status() === 200) {
-    //     const req = response.request();
-    //     console.log("🚀 ~ file: wxVideoAutoScript.js ~ line 145 ~ WxVideoAutoScript ~ postVideo ~ req", req)
-    //     console.log("Response 的:" + req.method(), response.status(), req.url());
-    //   }
-    //   request.continue()
-    // })
-
-    // page.waitForResponse(res => res.url() && res.status() === 200).then(async () => {
-    
-    // })
-    
+    const submitBtn = await page.waitForSelector('.weui-desktop-popover__target button.weui-desktop-btn.weui-desktop-btn_primary')
+    await submitBtn.click()
   }
 
   //延时函数
