@@ -49,8 +49,12 @@ const createFFTask = async (contentVideo, desc = '') => {
     outputDir,
     width: videoWidth,
     height: videoHeight,
-    log: true
+    log: true,
     //audio,
+    defaultOutputOptions: {
+      merge: true,
+      options: ['-c:v', 'libx264']
+    }
   });
 
   // create FFScene

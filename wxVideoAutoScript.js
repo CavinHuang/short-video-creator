@@ -3,6 +3,8 @@ const fs = require('fs')
 const puppeteer = require('puppeteer')
 const axios = require('axios')
 
+const filePath = path.resolve(__dirname, './1.mp4')
+
 class WxVideoAutoScript {
   url = 'https://channels.weixin.qq.com/platform'
   browser
@@ -10,7 +12,8 @@ class WxVideoAutoScript {
     const browser = await puppeteer.launch({
       headless: false,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-infobars','--window-size=1920,1080'],
-      ignoreDefaultArgs: ['--enable-automation']
+      ignoreDefaultArgs: ['--enable-automation'],
+      executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
     })
     this.browser = browser
     const page = await browser.newPage()
@@ -19,27 +22,39 @@ class WxVideoAutoScript {
 
     // 导航到url
     await page.goto(this.url, { waitUntil: 'domcontentloaded' })
+      
     this.handleWxVideo(page)
   }
 
-  async handleWxVideo(page) {
-    // const res = await page.$eval('body', (e) => {
-    //   console.log(e)
-    //   // const loginArea = e.querySelector('.qrcode-area').querySelector('span').innerText
-    //   // console.log("🚀 ~ file: wxVideoAutoScript.js ~ line 27 ~ WxVideoAutoScript ~ awaitpage.$eval ~ loginArea", loginArea)
-    //   return e
-    // })
-    await page.waitForResponse(response => {
-      return response.url().includes('auth/auth_login_code')
-    }).then(async () => {
+  async handleWxVideo(page, loaded = false) {
+    console.log('是否已经加载', loaded)
+    if (!loaded) {
+      await page.waitForResponse(response => {
+        return response.url().includes('auth/auth_login_code')
+        }).then(async () => {
+        const needLogin = await page.evaluate(()=>{
+          const qrcode = document.querySelector('.qrcode-area').querySelector('.tip span').innerHTML;
+          return qrcode
+        });
+        if (needLogin) {
+          this.doLogin(page)
+        } else {
+          console.log('=======开始发布')
+          this.postVideo(page)
+        }
+      })
+    } else {
       const needLogin = await page.evaluate(()=>{
-        const qrcode = document.querySelector('.qrcode-area').querySelector('.tip span').innerHTML;
+        const qrcode = document.querySelector('.qrcode-area')?.querySelector('.tip span')?.innerHTML;
         return qrcode
       });
       if (needLogin) {
         this.doLogin(page)
+      } else {
+        console.log('=======开始发布')
+        this.postVideo(page)
       }
-    })
+    }
   }
 
   pushToWechat(imgUrl) {
@@ -66,15 +81,124 @@ class WxVideoAutoScript {
   async doLogin(page) {
     console.log('需要登录')
     const image = await page.evaluate(()=>{
-        const qrcode = document.querySelector('.qrcode-area').querySelector('img').src;
-        return qrcode
-      });
-      if (image) {
-        this.pushToWechat(image)
-      }
+      const qrcode = document.querySelector('.qrcode-area').querySelector('img').src;
+      return qrcode
+    });
+    if (image) {
+      // this.pushToWechat(image)
+    }
+    const time = Date.now()
+    let i = 0
+    while(Date.now() - time < 10 * 1000) {
+      await this.sleep(1000)
+      console.log('等待登录操作', i)
+      i++
+    }
+    console.log('开始重新判断')
+    this.handleWxVideo(page, true)
   }
 
-  postVideo() {}
+  async postVideo(page) {
+    console.log('开始发布')
+    const fileUrl = path.resolve(__dirname, './start.mp4')
+    const desc = "太阳出來了 \r\n没什么练习直接录 #推荐 #人人都是创作者"
+    console.log("开始上传视频")
+    // await page.waitForNavigation()
+    const startBtn = await page.waitForSelector('.post-list button.weui-desktop-btn.weui-desktop-btn_primary')
+    // const btn = await page.evaluate((btn) => {
+    //   document.querySelector(btn).click()
+    //   // btn.click()l
+    // }, '.post-list button.weui-desktop-btn.weui-desktop-btn_primary')
+    await startBtn.click()
+
+    // page.waitForSelector('.weui-desktop-btn.weui-desktop-btn_primary').then(async (e) => {
+    //   fs.writeFileSync('./static/333.html', await page.content())
+    //   // e.click()
+    //   const a = await page.$('button.weui-desktop-btn.weui-desktop-btn_primary')
+    //   console.log("🚀 ~ file: wxVideoAutoScript.js ~ line 107 ~ WxVideoAutoScript ~ page.waitForSelector ~ a", a)
+    //   a.click()
+    // })
+    const uploadBtn = await page.waitForSelector('.ant-upload.ant-upload-btn')
+    await uploadBtn.click()
+
+    await page.evaluate((fileInput) => {
+      document.querySelector(fileInput).style.display = 'inline'
+      // btn.click()l
+    }, '.ant-upload.ant-upload-btn input')
+    // fs.writeFileSync('./static/333.html', await page.content())
+    // const fileChooser = await page.waitForFileChooser()
+    // console.log("🚀 ~ file: wxVideoAutoScript.js ~ line 119 ~ WxVideoAutoScript ~ postVideo ~ fileChooser", fileChooser)
+    // await fileChooser.accept([filePath]);
+    
+    const uploadFileInput = await page.waitForSelector('.ant-upload.ant-upload-btn input')
+    console.log("🚀 ~ file: wxVideoAutoScript.js ~ line 125 ~ WxVideoAutoScript ~ postVideo ~ uploadFileInput", uploadFileInput)
+    await uploadFileInput.uploadFile(filePath)
+    await this.sleep(5000)
+
+    const hasProcess = async () => await page.evaluate((selector) => {
+      return document.querySelector(selector)
+    }, '.media-status-body')
+
+    while(await hasProcess()) {
+      console.log('正在上传......')
+      await this.sleep(5000)
+    }
+    console.log('上传完成')
+
+    await this.sleep(5000)
+    // 选取封面
+    const preivewBtn = await page.waitForSelector('.finder-tag-wrap.btn')
+    await preivewBtn.click()
+    const previewWrap = await page.waitForSelector('.weui-desktop-dialog__wrp')
+    // top 181
+    const {x, y} = await page.evaluate((boxSelect) => {
+      const box = document.querySelector(boxSelect).getBoundingClientRect()
+      const { x, y, width, height } = box
+      return { x, y }
+    }, '.crop-box')
+    console.log("🚀 ~ file: wxVideoAutoScript.js ~ line 159 ~ WxVideoAutoScript ~ const{x,y}=awaitpage.evaluate ~ x", x, y)
+
+    await page.mouse.move(x + 30, y, { steps: 10 })
+    await page.mouse.down()
+    await page.mouse.move(x + 30, 182, { steps: 10 })
+    await page.mouse.up()
+
+    // 截取预览图
+    const { px, py } = await page.evaluate((previewSelector) => {
+      const previewImg = document.querySelector(previewSelector).getBoundingClientRect()
+      const { x, y, width, height } = previewImg
+      return { px: x, py: y }
+    }, '.current-key-frame')
+
+    await page.mouse.move(px + 10, py + 10, { steps: 10 })
+    await page.mouse.down()
+    await page.mouse.move(80.5, py, { steps: 10 })
+    await page.mouse.up()
+
+    await page.waitForSelector('.input-editor')
+    await page.type('.input-editor', desc)
+    console.log('发送描述信息')
+
+    // page.waitForResponse(req => {
+    //   console.log(req.url())
+    //   return req.url().includes('/applyuploaddfs') && req.status() === 200
+    // }).then(req => {
+    //   console.log(req, '+++++++=====')
+    // })
+    // page.on('response', request  => {
+    //   if (request.url().includes('/applyuploaddfs') && request.status() === 200) {
+    //     const req = response.request();
+    //     console.log("🚀 ~ file: wxVideoAutoScript.js ~ line 145 ~ WxVideoAutoScript ~ postVideo ~ req", req)
+    //     console.log("Response 的:" + req.method(), response.status(), req.url());
+    //   }
+    //   request.continue()
+    // })
+
+    // page.waitForResponse(res => res.url() && res.status() === 200).then(async () => {
+    
+    // })
+    
+  }
 
   //延时函数
   sleep(delay) {
